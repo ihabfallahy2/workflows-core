@@ -43,8 +43,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ASSETS=""
+          if [ -f "95_Systems.exe" ]; then
+            ASSETS="$ASSETS 95_Systems.exe"
+          fi
           if [ -f "95_Systems-Windows-Portable.zip" ]; then
-            ASSETS="95_Systems-Windows-Portable.zip"
+            ASSETS="$ASSETS 95_Systems-Windows-Portable.zip"
           fi
           gh release create ${{ steps.semver.outputs.new_tag }} $ASSETS \
             --title "${{ steps.semver.outputs.new_tag }}" \
