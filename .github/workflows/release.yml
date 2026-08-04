@@ -26,10 +26,24 @@ jobs:
       - name: Generar changelog
         run: npx conventional-changelog-cli -p angular -i CHANGELOG.md -s
 
+      - name: Empaquetar ejecutable nativo si existe app-shell/Launcher.cs
+        run: |
+          if [ -f "app-shell/Launcher.cs" ]; then
+            echo "Compilando cliente y empaquetando 95_Systems..."
+            if [ -d "gui-client" ]; then
+              cd gui-client && npm install && npm run build && cd ..
+            fi
+            zip -r 95_Systems-Windows-Portable.zip app-shell server gui-client/dist package.json 2>/dev/null || true
+          fi
+
       - name: Crear GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create ${{ steps.semver.outputs.new_tag }} \
+          ASSETS=""
+          if [ -f "95_Systems-Windows-Portable.zip" ]; then
+            ASSETS="95_Systems-Windows-Portable.zip"
+          fi
+          gh release create ${{ steps.semver.outputs.new_tag }} $ASSETS \
             --title "${{ steps.semver.outputs.new_tag }}" \
             --generate-notes
