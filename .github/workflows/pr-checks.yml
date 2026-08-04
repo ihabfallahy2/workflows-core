@@ -20,7 +20,7 @@ jobs:
       - name: Checks Node
         if: hashFiles('package.json') != ''
         run: |
-          if [ -f "package-lock.json" ]; then npm ci; else npm install; fi
+          npm install
           npm run lint --if-present
           npm run build --if-present
           npm test --if-present
