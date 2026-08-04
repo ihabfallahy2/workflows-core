@@ -1,0 +1,12 @@
+name: labeler
+on:
+  workflow_call:
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: actions/labeler@v5

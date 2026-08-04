@@ -1,0 +1,8 @@
+name: labeler
+on:
+  pull_request_target:
+    types: [opened]
+
+jobs:
+  label:
+    uses: ihabfallahy2/workflows-core/.github/workflows/labeler.yml@v1

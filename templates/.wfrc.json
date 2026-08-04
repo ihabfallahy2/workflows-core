@@ -1,0 +1,7 @@
+{
+  "templatesRepo": "ihabfallahy2/workflows-core",
+  "templatesRef": "v1",
+  "baseBranch": "master",
+  "developBranch": "develop",
+  "requiredApprovingReviews": 1
+}

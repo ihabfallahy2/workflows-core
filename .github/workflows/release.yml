@@ -1,0 +1,35 @@
+name: release
+on:
+  workflow_call:
+    inputs:
+      target-branch:
+        type: string
+        default: master
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calcular próxima versión (conventional commits)
+        id: semver
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: patch
+
+      - name: Generar changelog
+        run: npx conventional-changelog-cli -p angular -i CHANGELOG.md -s
+
+      - name: Crear GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ steps.semver.outputs.new_tag }} \
+            --title "${{ steps.semver.outputs.new_tag }}" \
+            --generate-notes

@@ -1,0 +1,9 @@
+name: release
+on:
+  push:
+    branches: [master]
+
+jobs:
+  release:
+    uses: ihabfallahy2/workflows-core/.github/workflows/release.yml@v1
+    secrets: inherit

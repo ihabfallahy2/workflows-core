@@ -1,0 +1,9 @@
+name: pr-checks
+on:
+  pull_request:
+    branches: [develop, master]
+
+jobs:
+  checks:
+    uses: ihabfallahy2/workflows-core/.github/workflows/pr-checks.yml@v1
+    secrets: inherit

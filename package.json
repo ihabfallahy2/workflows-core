@@ -1,0 +1,6 @@
+{
+  "name": "workflows-core",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fuente de verdad de los workflows de CI/release reutilizables"
+}
