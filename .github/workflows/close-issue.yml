@@ -1,0 +1,32 @@
+name: auto-close-issue
+on:
+  workflow_call:
+
+jobs:
+  close-issue:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: read
+      contents: read
+    steps:
+      - name: Extraer y cerrar issue automáticamente al mergear en develop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # Extraer número de issue de la rama (ej. feat/12-slug -> 12)
+          ISSUE_NUM=$(echo "$PR_BRANCH" | grep -oP '^(feat|fix)/\K[0-9]+' || echo "")
+          
+          if [ -z "$ISSUE_NUM" ]; then
+            # Buscar en el cuerpo del PR si tiene Closes #12
+            ISSUE_NUM=$(echo "$PR_BODY" | grep -oP 'Closes #\K[0-9]+' || echo "")
+          fi
+
+          if [ -n "$ISSUE_NUM" ]; then
+            echo "Merge detectado. Cerrando Issue #$ISSUE_NUM..."
+            gh issue close "$ISSUE_NUM" --comment "Cerrado automáticamente al mergear la PR $PR_BRANCH en develop."
+          else
+            echo "No se detectó número de issue para cerrar automáticamente."
+          fi

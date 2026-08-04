@@ -1,0 +1,16 @@
+name: auto-close-issue
+on:
+  pull_request:
+    types: [closed]
+    branches: [develop]
+
+permissions:
+  issues: write
+  pull-requests: read
+  contents: read
+
+jobs:
+  close:
+    if: github.event.pull_request.merged == true
+    uses: ihabfallahy2/workflows-core/.github/workflows/close-issue.yml@v1
+    secrets: inherit
