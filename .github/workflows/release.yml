@@ -30,7 +30,7 @@ jobs:
         run: |
           if [ -f "app-shell/Launcher.cs" ]; then
             echo "Compilando cliente y empaquetando 95_Systems.exe..."
-            sudo apt-get update -y && sudo apt-get install -y mono-mcs libmono-winforms2.0-cil zip
+            sudo apt-get update -y && sudo apt-get install -y mono-devel zip
             mcs -target:winexe -r:System.Windows.Forms.dll -r:System.Drawing.dll -out:95_Systems.exe app-shell/Launcher.cs
             if [ -d "gui-client" ]; then
               cd gui-client && npm install && npm run build && cd ..
