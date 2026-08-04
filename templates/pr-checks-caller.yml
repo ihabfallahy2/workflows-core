@@ -3,6 +3,10 @@ on:
   pull_request:
     branches: [develop, master]
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   checks:
     uses: ihabfallahy2/workflows-core/.github/workflows/pr-checks.yml@v1
