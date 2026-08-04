@@ -35,7 +35,7 @@ jobs:
             if [ -d "gui-client" ]; then
               cd gui-client && npm install && npm run build && cd ..
             fi
-            zip -r 95_Systems-Windows-Portable.zip 95_Systems.exe server gui-client/dist package.json 2>/dev/null || true
+            zip -j 95_Systems-Windows-Portable.zip 95_Systems.exe
           fi
 
       - name: Crear GitHub Release
