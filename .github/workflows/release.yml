@@ -26,14 +26,16 @@ jobs:
       - name: Generar changelog
         run: npx conventional-changelog-cli -p angular -i CHANGELOG.md -s
 
-      - name: Empaquetar ejecutable nativo si existe app-shell/Launcher.cs
+      - name: Compilar y empaquetar ejecutable nativo 95_Systems.exe
         run: |
           if [ -f "app-shell/Launcher.cs" ]; then
-            echo "Compilando cliente y empaquetando 95_Systems..."
+            echo "Compilando cliente y empaquetando 95_Systems.exe..."
+            sudo apt-get update -y && sudo apt-get install -y mono-mcs zip
+            mcs -target:winexe -out:95_Systems.exe app-shell/Launcher.cs
             if [ -d "gui-client" ]; then
               cd gui-client && npm install && npm run build && cd ..
             fi
-            zip -r 95_Systems-Windows-Portable.zip app-shell server gui-client/dist package.json 2>/dev/null || true
+            zip -r 95_Systems-Windows-Portable.zip 95_Systems.exe server gui-client/dist package.json 2>/dev/null || true
           fi
 
       - name: Crear GitHub Release
