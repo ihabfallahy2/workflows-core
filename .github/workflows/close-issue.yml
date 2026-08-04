@@ -10,6 +10,7 @@ jobs:
       pull-requests: read
       contents: read
     steps:
+      - uses: actions/checkout@v4
       - name: Extraer y cerrar issue automáticamente al mergear en develop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -26,7 +27,7 @@ jobs:
 
           if [ -n "$ISSUE_NUM" ]; then
             echo "Merge detectado. Cerrando Issue #$ISSUE_NUM..."
-            gh issue close "$ISSUE_NUM" --comment "Cerrado automáticamente al mergear la PR $PR_BRANCH en develop."
+            gh issue close "$ISSUE_NUM" --repo "$GITHUB_REPOSITORY" --comment "Cerrado automáticamente al mergear la PR $PR_BRANCH en develop."
           else
             echo "No se detectó número de issue para cerrar automáticamente."
           fi
