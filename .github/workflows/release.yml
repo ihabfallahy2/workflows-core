@@ -44,18 +44,14 @@ jobs:
 
           # 3. Compilar Ejecutable de Linux
           mkdir -p dist-linux
-          cat << 'EOF' > dist-linux/95_Systems-Linux-x86_64
-#!/bin/bash
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$DIR"
-node server/src/index.js &
-SERVER_PID=$!
-sleep 1
-if command -v xdg-open > /dev/null; then
-  xdg-open http://localhost:4000
-fi
-wait $SERVER_PID
-EOF
+          echo '#!/bin/bash' > dist-linux/95_Systems-Linux-x86_64
+          echo 'DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"' >> dist-linux/95_Systems-Linux-x86_64
+          echo 'cd "$DIR"' >> dist-linux/95_Systems-Linux-x86_64
+          echo 'node server/src/index.js &' >> dist-linux/95_Systems-Linux-x86_64
+          echo 'SERVER_PID=$!' >> dist-linux/95_Systems-Linux-x86_64
+          echo 'sleep 1' >> dist-linux/95_Systems-Linux-x86_64
+          echo 'if command -v xdg-open > /dev/null; then xdg-open http://localhost:4000; fi' >> dist-linux/95_Systems-Linux-x86_64
+          echo 'wait $SERVER_PID' >> dist-linux/95_Systems-Linux-x86_64
           chmod +x dist-linux/95_Systems-Linux-x86_64
           cp -r server gui-client/dist package.json dist-linux/ 2>/dev/null || true
           tar -czf 95_Systems-Linux-x86_64.tar.gz -C dist-linux .
