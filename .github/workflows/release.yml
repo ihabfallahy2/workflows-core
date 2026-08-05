@@ -7,61 +7,42 @@ on:
         default: master
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Build Frontend & Assets
-        shell: pwsh
-        run: |
-          if (Test-Path "gui-client") {
-            cd gui-client
-            npm ci
-            npm run build
-            cd ..
-          }
-          Compress-Archive -Path server, gui-client/dist, package.json -DestinationPath bundle.zip -Force
-
-      - name: Compile Windows Binaries (Portable & Installer)
-        shell: pwsh
-        run: |
-          if (Test-Path "app-shell/Launcher.cs") {
-            $csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
-            & $csc /target:winexe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /resource:bundle.zip,bundle.zip /out:95_Systems-Windows-Portable.exe app-shell\Launcher.cs
-            Copy-Item 95_Systems-Windows-Portable.exe 95_Systems-Windows-Setup.exe
-          }
-
-      - name: Upload Windows Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-binaries
-          path: |
-            95_Systems-Windows-Portable.exe
-            95_Systems-Windows-Setup.exe
-
-  build-linux:
+  release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - name: Calcular próxima versión (conventional commits)
+        id: semver
+        uses: mathieudutour/github-tag-action@v6.2
         with:
-          node-version: 20
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: patch
 
-      - name: Build Linux Executable Bundle
+      - name: Generar changelog
+        run: npx conventional-changelog-cli -p angular -i CHANGELOG.md -s
+
+      - name: Compilar binarios Multi-Plataforma (Windows & Linux)
         run: |
+          sudo apt-get update -y && sudo apt-get install -y mono-devel zip
+          
+          # 1. Compilar Frontend React
           if [ -d "gui-client" ]; then
             cd gui-client && npm ci && npm run build && cd ..
           fi
+
+          # 2. Compilar Ejecutables de Windows (Portable & Setup)
+          if [ -f "app-shell/Launcher.cs" ]; then
+            zip -r bundle.zip server gui-client/dist package.json 2>/dev/null || true
+            mcs -target:winexe -r:System.Windows.Forms.dll -r:System.Drawing.dll -r:System.IO.Compression.dll -r:System.IO.Compression.FileSystem.dll -resource:bundle.zip,bundle.zip -out:95_Systems-Windows-Portable.exe app-shell/Launcher.cs
+            cp 95_Systems-Windows-Portable.exe 95_Systems-Windows-Setup.exe
+          fi
+
+          # 3. Compilar Ejecutable de Linux
           mkdir -p dist-linux
           cat << 'EOF' > dist-linux/95_Systems-Linux-x86_64
 #!/bin/bash
@@ -76,39 +57,8 @@ fi
 wait $SERVER_PID
 EOF
           chmod +x dist-linux/95_Systems-Linux-x86_64
-          cp -r server gui-client/dist package.json dist-linux/
+          cp -r server gui-client/dist package.json dist-linux/ 2>/dev/null || true
           tar -czf 95_Systems-Linux-x86_64.tar.gz -C dist-linux .
-
-      - name: Upload Linux Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-binary
-          path: 95_Systems-Linux-x86_64.tar.gz
-
-  release:
-    needs: [build-windows, build-linux]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Download Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          merge-multiple: true
-
-      - name: Calcular próxima versión (conventional commits)
-        id: semver
-        uses: mathieudutour/github-tag-action@v6.2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          default_bump: patch
-
-      - name: Generar changelog
-        run: npx conventional-changelog-cli -p angular -i CHANGELOG.md -s
 
       - name: Crear GitHub Release Multi-Plataforma
         env:
