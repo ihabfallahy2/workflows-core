@@ -36,6 +36,7 @@ jobs:
           cd gui-client
           npm install
           npm run build
+          cd ..
 
       - name: Compilar ejecutable Electron para Windows (NSIS Setup & Portable)
         env:
