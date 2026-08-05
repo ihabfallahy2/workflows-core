@@ -32,7 +32,7 @@ jobs:
           
           # 1. Compilar Frontend React
           if [ -d "gui-client" ]; then
-            cd gui-client && npm ci && npm run build && cd ..
+            cd gui-client && npm install && npm run build && cd ..
           fi
 
           # 2. Compilar Ejecutables de Windows (Portable & Setup)
