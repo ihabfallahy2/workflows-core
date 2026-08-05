@@ -29,12 +29,13 @@ jobs:
       - name: Compilar y empaquetar ejecutable nativo 95_Systems.exe
         run: |
           if [ -f "app-shell/Launcher.cs" ]; then
-            echo "Compilando cliente y empaquetando 95_Systems.exe..."
+            echo "Compilando frontend e incrustando recursos en 95_Systems.exe..."
             sudo apt-get update -y && sudo apt-get install -y mono-devel zip
-            mcs -target:winexe -r:System.Windows.Forms.dll -r:System.Drawing.dll -out:95_Systems.exe app-shell/Launcher.cs
             if [ -d "gui-client" ]; then
               cd gui-client && npm install && npm run build && cd ..
             fi
+            zip -r bundle.zip server gui-client/dist package.json 2>/dev/null || true
+            mcs -target:winexe -r:System.Windows.Forms.dll -r:System.Drawing.dll -r:System.IO.Compression.dll -r:System.IO.Compression.FileSystem.dll -resource:bundle.zip,bundle.zip -out:95_Systems.exe app-shell/Launcher.cs
             zip -j 95_Systems-Windows-Portable.zip 95_Systems.exe
           fi
 
