@@ -39,18 +39,30 @@ jobs:
           npm install
           npm run build
 
-      - name: Crear GitHub Release con ejecutable nativo en Go
+      - name: Crear GitHub Release con ejecutable nativo de Escritorio
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
         run: |
           $ver = "${{ steps.semver.outputs.new_tag }}"
+          $assets = @()
+
+          if (Test-Path "dist-desktop") {
+            $found = Get-ChildItem "dist-desktop\*.exe" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+            if ($found) { $assets += $found }
+          }
+          if (Test-Path "dist") {
+            $foundDist = Get-ChildItem "dist\*.exe" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+            if ($foundDist) { $assets += $foundDist }
+          }
           if (Test-Path "95_Systems.exe") {
-            $exeName = "95_Systems-$ver.exe"
-            Copy-Item "95_Systems.exe" $exeName
-            gh release create $ver $exeName --title "$ver" --generate-notes
+            $goExe = "95_Systems-GoServer-$ver.exe"
+            Copy-Item "95_Systems.exe" $goExe
+            $assets += (Get-Item $goExe).FullName
+          }
+
+          if ($assets.Count -gt 0) {
+            gh release create $ver $assets --title "$ver" --generate-notes
           } else {
-            $setupExe = Get-Item "dist-desktop/95_Systems Setup *.exe" | Select-Object -ExpandProperty FullName
-            $portableExe = Get-Item "dist-desktop/95_Systems *.exe" | Where-Object { $_.FullName -notlike "*Setup*" } | Select-Object -ExpandProperty FullName
-            gh release create $ver $setupExe $portableExe --title "$ver" --generate-notes
+            gh release create $ver --title "$ver" --generate-notes
           }
