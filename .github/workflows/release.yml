@@ -8,13 +8,17 @@ on:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Calcular próxima versión (conventional commits)
         id: semver
@@ -26,47 +30,24 @@ jobs:
       - name: Generar changelog
         run: npx conventional-changelog-cli -p angular -i CHANGELOG.md -s
 
-      - name: Compilar binarios Multi-Plataforma (Windows & Linux)
+      - name: Instalar dependencias y compilar Frontend
         run: |
-          sudo apt-get update -y && sudo apt-get install -y mono-devel zip nsis
-          
-          # 1. Compilar Frontend React
-          if [ -d "gui-client" ]; then
-            cd gui-client && npm install && npm run build && cd ..
-          fi
+          npm install
+          cd gui-client
+          npm install
+          npm run build
 
-          # 2. Compilar Ejecutables de Windows (Portable & Setup con NSIS)
-          if [ -f "app-shell/Launcher.cs" ]; then
-            zip -r bundle.zip server gui-client/dist package.json 2>/dev/null || true
-            mcs -target:winexe -r:System.Windows.Forms.dll -r:System.Drawing.dll -r:System.IO.Compression.dll -r:System.IO.Compression.FileSystem.dll -resource:bundle.zip,bundle.zip -out:95_Systems-Windows-Portable.exe app-shell/Launcher.cs
-            if [ -f "app-shell/installer.nsi" ]; then
-              makensis app-shell/installer.nsi
-            else
-              cp 95_Systems-Windows-Portable.exe 95_Systems-Windows-Setup.exe
-            fi
-          fi
-
-          # 3. Compilar Ejecutable de Linux
-          mkdir -p dist-linux
-          echo '#!/bin/bash' > dist-linux/95_Systems-Linux-x86_64
-          echo 'DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"' >> dist-linux/95_Systems-Linux-x86_64
-          echo 'cd "$DIR"' >> dist-linux/95_Systems-Linux-x86_64
-          echo 'node server/src/index.js &' >> dist-linux/95_Systems-Linux-x86_64
-          echo 'SERVER_PID=$!' >> dist-linux/95_Systems-Linux-x86_64
-          echo 'sleep 1' >> dist-linux/95_Systems-Linux-x86_64
-          echo 'if command -v xdg-open > /dev/null; then xdg-open http://localhost:4000; fi' >> dist-linux/95_Systems-Linux-x86_64
-          echo 'wait $SERVER_PID' >> dist-linux/95_Systems-Linux-x86_64
-          chmod +x dist-linux/95_Systems-Linux-x86_64
-          cp -r server gui-client/dist package.json dist-linux/ 2>/dev/null || true
-          tar -czf 95_Systems-Linux-x86_64.tar.gz -C dist-linux .
-
-      - name: Crear GitHub Release Multi-Plataforma
+      - name: Compilar ejecutable Electron para Windows (NSIS Setup & Portable)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG_NAME: ${{ steps.semver.outputs.new_tag }}
+        run: npx electron-builder --win nsis portable --publish never
+
+      - name: Crear GitHub Release con ejecutables nativos de Electron
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
         run: |
-          ASSETS=""
-          if [ -f "95_Systems-Windows-Portable.exe" ]; then ASSETS="$ASSETS 95_Systems-Windows-Portable.exe"; fi
-          if [ -f "95_Systems-Windows-Setup.exe" ]; then ASSETS="$ASSETS 95_Systems-Windows-Setup.exe"; fi
-          if [ -f "95_Systems-Linux-x86_64.tar.gz" ]; then ASSETS="$ASSETS 95_Systems-Linux-x86_64.tar.gz"; fi
-          gh release create "$TAG_NAME" $ASSETS --title "$TAG_NAME" --generate-notes
+          $ver = "${{ steps.semver.outputs.new_tag }}"
+          $setupExe = Get-Item "dist-desktop/95_Systems Setup *.exe" | Select-Object -ExpandProperty FullName
+          $portableExe = Get-Item "dist-desktop/95_Systems *.exe" | Where-Object { $_.FullName -notlike "*Setup*" } | Select-Object -ExpandProperty FullName
+          gh release create $ver $setupExe $portableExe --title "$ver" --generate-notes
