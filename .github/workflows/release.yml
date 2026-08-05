@@ -7,7 +7,86 @@ on:
         default: master
 
 jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build Frontend & Assets
+        shell: pwsh
+        run: |
+          if (Test-Path "gui-client") {
+            cd gui-client
+            npm ci
+            npm run build
+            cd ..
+          }
+          Compress-Archive -Path server, gui-client/dist, package.json -DestinationPath bundle.zip -Force
+
+      - name: Compile Windows Binaries (Portable & Installer)
+        shell: pwsh
+        run: |
+          if (Test-Path "app-shell/Launcher.cs") {
+            $csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+            & $csc /target:winexe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /resource:bundle.zip,bundle.zip /out:95_Systems-Windows-Portable.exe app-shell\Launcher.cs
+            Copy-Item 95_Systems-Windows-Portable.exe 95_Systems-Windows-Setup.exe
+          }
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-binaries
+          path: |
+            95_Systems-Windows-Portable.exe
+            95_Systems-Windows-Setup.exe
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build Linux Executable Bundle
+        run: |
+          if [ -d "gui-client" ]; then
+            cd gui-client && npm ci && npm run build && cd ..
+          fi
+          mkdir -p dist-linux
+          cat << 'EOF' > dist-linux/95_Systems-Linux-x86_64
+#!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$DIR"
+node server/src/index.js &
+SERVER_PID=$!
+sleep 1
+if command -v xdg-open > /dev/null; then
+  xdg-open http://localhost:4000
+fi
+wait $SERVER_PID
+EOF
+          chmod +x dist-linux/95_Systems-Linux-x86_64
+          cp -r server gui-client/dist package.json dist-linux/
+          tar -czf 95_Systems-Linux-x86_64.tar.gz -C dist-linux .
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-binary
+          path: 95_Systems-Linux-x86_64.tar.gz
+
   release:
+    needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -15,6 +94,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
 
       - name: Calcular próxima versión (conventional commits)
         id: semver
@@ -26,30 +110,16 @@ jobs:
       - name: Generar changelog
         run: npx conventional-changelog-cli -p angular -i CHANGELOG.md -s
 
-      - name: Compilar y empaquetar ejecutable nativo 95_Systems.exe
-        run: |
-          if [ -f "app-shell/Launcher.cs" ]; then
-            echo "Compilando frontend e incrustando recursos en 95_Systems.exe..."
-            sudo apt-get update -y && sudo apt-get install -y mono-devel zip
-            if [ -d "gui-client" ]; then
-              cd gui-client && npm install && npm run build && cd ..
-            fi
-            zip -r bundle.zip server gui-client/dist package.json 2>/dev/null || true
-            mcs -target:winexe -r:System.Windows.Forms.dll -r:System.Drawing.dll -r:System.IO.Compression.dll -r:System.IO.Compression.FileSystem.dll -resource:bundle.zip,bundle.zip -out:95_Systems.exe app-shell/Launcher.cs
-            zip -j 95_Systems-Windows-Portable.zip 95_Systems.exe
-          fi
-
-      - name: Crear GitHub Release
+      - name: Crear GitHub Release Multi-Plataforma
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ASSETS=""
-          if [ -f "95_Systems.exe" ]; then
-            ASSETS="$ASSETS 95_Systems.exe"
-          fi
-          if [ -f "95_Systems-Windows-Portable.zip" ]; then
-            ASSETS="$ASSETS 95_Systems-Windows-Portable.zip"
-          fi
+          for f in 95_Systems-Windows-Portable.exe 95_Systems-Windows-Setup.exe 95_Systems-Linux-x86_64.tar.gz; do
+            if [ -f "$f" ]; then
+              ASSETS="$ASSETS $f"
+            fi
+          done
           gh release create ${{ steps.semver.outputs.new_tag }} $ASSETS \
             --title "${{ steps.semver.outputs.new_tag }}" \
             --generate-notes
