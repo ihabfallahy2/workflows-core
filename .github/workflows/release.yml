@@ -64,10 +64,8 @@ EOF
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ASSETS=()
-          [ -f "95_Systems-Windows-Portable.exe" ] && ASSETS+=("95_Systems-Windows-Portable.exe")
-          [ -f "95_Systems-Windows-Setup.exe" ] && ASSETS+=("95_Systems-Windows-Setup.exe")
-          [ -f "95_Systems-Linux-x86_64.tar.gz" ] && ASSETS+=("95_Systems-Linux-x86_64.tar.gz")
-          gh release create "${{ steps.semver.outputs.new_tag }}" "${ASSETS[@]}" \
-            --title "${{ steps.semver.outputs.new_tag }}" \
-            --generate-notes
+          ASSETS=""
+          [ -f "95_Systems-Windows-Portable.exe" ] && ASSETS="$ASSETS 95_Systems-Windows-Portable.exe"
+          [ -f "95_Systems-Windows-Setup.exe" ] && ASSETS="$ASSETS 95_Systems-Windows-Setup.exe"
+          [ -f "95_Systems-Linux-x86_64.tar.gz" ] && ASSETS="$ASSETS 95_Systems-Linux-x86_64.tar.gz"
+          eval "gh release create ${{ steps.semver.outputs.new_tag }} $ASSETS --title '${{ steps.semver.outputs.new_tag }}' --generate-notes"
