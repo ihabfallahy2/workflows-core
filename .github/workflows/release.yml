@@ -20,6 +20,10 @@ jobs:
         with:
           node-version: 20
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+
       - name: Calcular próxima versión (conventional commits)
         id: semver
         uses: mathieudutour/github-tag-action@v6.2
@@ -30,25 +34,23 @@ jobs:
       - name: Generar changelog
         run: npx conventional-changelog-cli -p angular -i CHANGELOG.md -s
 
-      - name: Instalar dependencias y compilar Frontend
+      - name: Instalar dependencias y compilar proyecto
         run: |
           npm install
-          cd gui-client
-          npm install
           npm run build
-          cd ..
 
-      - name: Compilar ejecutable Electron para Windows (NSIS Setup & Portable)
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --win nsis portable --publish never
-
-      - name: Crear GitHub Release con ejecutables nativos de Electron
+      - name: Crear GitHub Release con ejecutable nativo en Go
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
         run: |
           $ver = "${{ steps.semver.outputs.new_tag }}"
-          $setupExe = Get-Item "dist-desktop/95_Systems Setup *.exe" | Select-Object -ExpandProperty FullName
-          $portableExe = Get-Item "dist-desktop/95_Systems *.exe" | Where-Object { $_.FullName -notlike "*Setup*" } | Select-Object -ExpandProperty FullName
-          gh release create $ver $setupExe $portableExe --title "$ver" --generate-notes
+          if (Test-Path "95_Systems.exe") {
+            $exeName = "95_Systems-$ver.exe"
+            Copy-Item "95_Systems.exe" $exeName
+            gh release create $ver $exeName --title "$ver" --generate-notes
+          } else {
+            $setupExe = Get-Item "dist-desktop/95_Systems Setup *.exe" | Select-Object -ExpandProperty FullName
+            $portableExe = Get-Item "dist-desktop/95_Systems *.exe" | Where-Object { $_.FullName -notlike "*Setup*" } | Select-Object -ExpandProperty FullName
+            gh release create $ver $setupExe $portableExe --title "$ver" --generate-notes
+          }
