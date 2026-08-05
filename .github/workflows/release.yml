@@ -63,9 +63,10 @@ EOF
       - name: Crear GitHub Release Multi-Plataforma
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ steps.semver.outputs.new_tag }}
         run: |
           ASSETS=""
-          [ -f "95_Systems-Windows-Portable.exe" ] && ASSETS="$ASSETS 95_Systems-Windows-Portable.exe"
-          [ -f "95_Systems-Windows-Setup.exe" ] && ASSETS="$ASSETS 95_Systems-Windows-Setup.exe"
-          [ -f "95_Systems-Linux-x86_64.tar.gz" ] && ASSETS="$ASSETS 95_Systems-Linux-x86_64.tar.gz"
-          eval "gh release create ${{ steps.semver.outputs.new_tag }} $ASSETS --title '${{ steps.semver.outputs.new_tag }}' --generate-notes"
+          if [ -f "95_Systems-Windows-Portable.exe" ]; then ASSETS="$ASSETS 95_Systems-Windows-Portable.exe"; fi
+          if [ -f "95_Systems-Windows-Setup.exe" ]; then ASSETS="$ASSETS 95_Systems-Windows-Setup.exe"; fi
+          if [ -f "95_Systems-Linux-x86_64.tar.gz" ]; then ASSETS="$ASSETS 95_Systems-Linux-x86_64.tar.gz"; fi
+          gh release create "$TAG_NAME" $ASSETS --title "$TAG_NAME" --generate-notes
